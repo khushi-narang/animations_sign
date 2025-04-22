@@ -1,71 +1,54 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.153.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.153.0/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.153.0/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'three';
 
-// Setup
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 1.5, 3);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-document.body.appendChild(renderer.domElement);
+let scene, camera, renderer, xbot, ref;
 
-const controls = new OrbitControls(camera, renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
+function init() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// Animation engine
-const ref = {
-  animations: [],
-  pending: false,
-  animate: function () {
-    if (!this.animations.length) return;
-    const frames = this.animations.shift();
-    frames.forEach(([boneName, prop, axis, value, sign]) => {
-      const bone = scene.getObjectByName(boneName);
-      if (bone) {
-        const delta = (sign === "+") ? value : -value;
-        bone[prop][axis] = delta;
-      }
+    camera.position.z = 5;
+
+    loadModel();
+    createButtons();
+    animate();
+}
+
+async function loadModel() {
+    const loader = new THREE.GLTFLoader();
+    loader.load('models/xbot.glb', (gltf) => {
+        xbot = gltf.scene;
+        scene.add(xbot);
+    }, undefined, (error) => {
+        console.error(error);
     });
-    setTimeout(() => {
-      this.pending = false;
-      if (this.animations.length) this.animate();
-    }, 800);
-  }
-};
+}
 
-// Load model
-let xbot;
-const loader = new GLTFLoader();
-loader.load('xbot.glb', gltf => {
-  xbot = gltf.scene;
-  scene.add(xbot);
-}, undefined, err => console.error(err));
+function createButtons() {
+    const ui = document.getElementById('ui');
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
+        const btn = document.createElement('button');
+        btn.textContent = letter;
+        btn.onclick = () => loadAnimation(letter);
+        ui.appendChild(btn);
+    });
+}
 
-// Animation loader
 async function loadAnimation(letter) {
-  if (!xbot) return alert("Model not loaded yet");
-  const module = await import(`./animations/${letter}.js`);
-  module[letter](ref); // call A(ref), B(ref), etc.
+    if (!xbot) return alert("Model not loaded yet");
+    try {
+        const module = await import(`./animations/${letter}.js`);
+        module[letter](ref); // call A(ref), B(ref), etc.
+    } catch (error) {
+        console.error(`Error loading animation for ${letter}:`, error);
+    }
 }
 
-// Create UI buttons
-const ui = document.getElementById('ui');
-'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(letter => {
-  const btn = document.createElement('button');
-  btn.textContent = letter;
-  btn.onclick = () => loadAnimation(letter);
-  ui.appendChild(btn);
-});
-
-// Render loop
 function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
 }
-animate();
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-});
+
+init();
