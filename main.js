@@ -18,13 +18,13 @@ function init() {
 
 async function loadModel() {
     const loader = new THREE.GLTFLoader();
-    loader.load('models/xbot.glb', (gltf) => {
-        xbot = gltf.scene;
-        scene.add(xbot);
-    }, undefined, (error) => {
+    loader.load('/xbot.glb', function (gltf) {
+        scene.add(gltf.scene);
+    }, undefined, function (error) {
         console.error(error);
     });
 }
+
 
 function createButtons() {
     const ui = document.getElementById('ui');
